@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Jam Emergence Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .play-btn { background: #4CAF50; color: white; }
+        .play-btn:hover { background: #45a049; }
+        .step-btn { background: #2196F3; color: white; }
+        .step-btn:hover { background: #1976D2; }
+        .reset-btn { background: #f44336; color: white; }
+        .reset-btn:hover { background: #d32f2f; }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        select {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+        
+        .simulation-area {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .road-container {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .stats-panel {
+            width: 300px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .jam-item {
+            background: #ffebee;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 12px;
+            border-left: 3px solid #f44336;
+        }
+        
+        .rules-box, .observe-box {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .observe-box {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        
+        .rules-box h4, .observe-box h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .rules-box ul, .observe-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .rules-box li, .observe-box li {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        
+        svg {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: white;
+        }
+        
+        .car {
+            fill: #f44336;
+            stroke: #333;
+            stroke-width: 1;
+        }
+        
+        .empty {
+            fill: #e0e0e0;
+            stroke: #999;
+            stroke-width: 1;
+        }
+        
+        .position-text {
+            font-size: 10px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        
+        .car-text {
+            fill: white;
+        }
+        
+        .empty-text {
+            fill: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Traffic Jam Emergence Simulation</h1>
+            <p>Watch how simple movement rules create complex traffic patterns</p>
+        </div>
+        
+        <div class="controls">
+            <button id="playBtn" class="play-btn" onclick="toggleSimulation()">▶ Play</button>
+            <button id="stepBtn" class="step-btn" onclick="stepSimulation()">⏭ Step</button>
+            <button class="reset-btn" onclick="resetSimulation()">🔄 Reset</button>
+            
+            <div class="speed-control">
+                <label>Speed:</label>
+                <select id="speedSelect" onchange="changeSpeed()">
+                    <option value="1000">Slow</option>
+                    <option value="500" selected>Medium</option>
+                    <option value="200">Fast</option>
+                </select>
+            </div>
+            
+            <div class="speed-control">
+                <label>Cars:</label>
+                <input type="range" id="carSlider" min="5" max="18" value="14" onchange="changeCarCount()">
+                <span id="carSliderValue">14</span>
+            </div>
+        </div>
+        
+        <div class="simulation-area">
+            <div class="road-container">
+                <h3>Circular Road</h3>
+                <svg id="roadSvg" width="400" height="400"></svg>
+            </div>
+            
+            <div class="stats-panel">
+                <h3>Simulation Stats</h3>
+                
+                <div class="stat-row">
+                    <span>Time Step:</span>
+                    <span id="stepCount">0</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span>Total Cars:</span>
+                    <span id="carCount">14</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span>Traffic Jams:</span>
+                    <span id="jamCount">0</span>
+                </div>
+                
+                <div id="jamList"></div>
+                
+                <div class="rules-box">
+                    <h4>Rules:</h4>
+                    <ul>
+                        <li>Cars move clockwise</li>
+                        <li>Move 1 space if next is empty</li>
+                        <li>Wait if next space occupied</li>
+                        <li>All cars update simultaneously</li>
+                    </ul>
+                </div>
+                
+                <div class="observe-box">
+                    <h4>Observe:</h4>
+                    <ul>
+                        <li>Jams form spontaneously</li>
+                        <li>Jams move backward</li>
+                        <li>Dense/sparse areas emerge</li>
+                        <li>No central control needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ROAD_SIZE = 20;
+        let INITIAL_CARS = 14;
+        
+        let cars = [];
+        let isRunning = false;
+        let step = 0;
+        let speed = 500;
+        let intervalId = null;
+        
+        // Initialize simulation
+        function initializeSimulation() {
+            // Create random car positions
+            const positions = new Set();
+            while (positions.size < INITIAL_CARS) {
+                positions.add(Math.floor(Math.random() * ROAD_SIZE));
+            }
+            
+            cars = Array(ROAD_SIZE).fill(false);
+            positions.forEach(pos => cars[pos] = true);
+            step = 0;
+            
+            updateDisplay();
+            drawRoad();
+        }
+        
+        // Change number of cars
+        function changeCarCount() {
+            const slider = document.getElementById('carSlider');
+            const valueDisplay = document.getElementById('carSliderValue');
+            INITIAL_CARS = parseInt(slider.value);
+            valueDisplay.textContent = INITIAL_CARS;
+            
+            // Stop simulation if running
+            if (isRunning) {
+                toggleSimulation();
+            }
+            
+            // Reinitialize with new car count
+            initializeSimulation();
+        }
+        
+        // Get position coordinates for circular road
+        function getPosition(index) {
+            const angle = (index / ROAD_SIZE) * 2 * Math.PI - Math.PI / 2;
+            const radius = 140;
+            const centerX = 200;
+            const centerY = 200;
+            return {
+                x: centerX + radius * Math.cos(angle),
+                y: centerY + radius * Math.sin(angle)
+            };
+        }
+        
+        // Draw the road and cars
+        function drawRoad() {
+            const svg = document.getElementById('roadSvg');
+            svg.innerHTML = '';
+            
+            // Draw road circle
+            const road = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            road.setAttribute('cx', '200');
+            road.setAttribute('cy', '200');
+            road.setAttribute('r', '140');
+            road.setAttribute('fill', 'none');
+            road.setAttribute('stroke', '#666');
+            road.setAttribute('stroke-width', '3');
+            road.setAttribute('stroke-dasharray', '5,5');
+            svg.appendChild(road);
+            
+            // Direction arrow
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrow.setAttribute('d', 'M 200 50 L 210 60 L 200 65 L 190 60 Z');
+            arrow.setAttribute('fill', '#f44336');
+            svg.appendChild(arrow);
+            
+            const dirText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            dirText.setAttribute('x', '200');
+            dirText.setAttribute('y', '40');
+            dirText.setAttribute('text-anchor', 'middle');
+            dirText.setAttribute('font-size', '12');
+            dirText.textContent = 'Direction →';
+            svg.appendChild(dirText);
+            
+            // Draw positions and cars
+            for (let i = 0; i < ROAD_SIZE; i++) {
+                const pos = getPosition(i);
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', pos.x);
+                circle.setAttribute('cy', pos.y);
+                circle.setAttribute('r', '12');
+                circle.setAttribute('class', cars[i] ? 'car' : 'empty');
+                svg.appendChild(circle);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', pos.x);
+                text.setAttribute('y', pos.y);
+                text.setAttribute('class', cars[i] ? 'position-text car-text' : 'position-text empty-text');
+                text.textContent = cars[i] ? '🚗' : (i + 1);
+                svg.appendChild(text);
+            }
+        }
+        
+        // Simulation step
+        function simulationStep() {
+            const newCars = Array(ROAD_SIZE).fill(false);
+            
+            for (let i = 0; i < ROAD_SIZE; i++) {
+                if (cars[i]) {
+                    const nextPos = (i + 1) % ROAD_SIZE;
+                    if (!cars[nextPos]) {
+                        newCars[nextPos] = true;
+                    } else {
+                        newCars[i] = true;
+                    }
+                }
+            }
+            
+            cars = newCars;
+            step++;
+            updateDisplay();
+            drawRoad();
+        }
+        
+        // Find traffic jams
+        function findTrafficJams() {
+            const jams = [];
+            let currentJam = [];
+            
+            // Check for consecutive cars including wraparound
+            const extendedCars = [...cars, ...cars];
+            
+            for (let i = 0; i < ROAD_SIZE; i++) {
+                if (extendedCars[i]) {
+                    if (currentJam.length === 0) {
+                        currentJam = [i];
+                    }
+                    
+                    let j = i + 1;
+                    while (j < ROAD_SIZE + i && extendedCars[j]) {
+                        currentJam.push(j % ROAD_SIZE);
+                        j++;
+                    }
+                    
+                    if (currentJam.length >= 2) {
+                        const uniqueJam = [...new Set(currentJam)].sort((a, b) => a - b);
+                        jams.push(uniqueJam);
+                    }
+                    
+                    i = j - 1;
+                    currentJam = [];
+                }
+            }
+            
+            return jams;
+        }
+        
+        // Update display
+        function updateDisplay() {
+            document.getElementById('stepCount').textContent = step;
+            document.getElementById('carCount').textContent = cars.filter(Boolean).length;
+            
+            const jams = findTrafficJams();
+            document.getElementById('jamCount').textContent = jams.length;
+            
+            const jamList = document.getElementById('jamList');
+            jamList.innerHTML = '';
+            
+            if (jams.length > 0) {
+                const title = document.createElement('h4');
+                title.textContent = 'Active Jams:';
+                title.style.color = '#f44336';
+                title.style.marginTop = '15px';
+                jamList.appendChild(title);
+                
+                jams.forEach((jam, idx) => {
+                    const jamDiv = document.createElement('div');
+                    jamDiv.className = 'jam-item';
+                    jamDiv.textContent = `Positions ${jam[0] + 1}-${jam[jam.length - 1] + 1} (${jam.length} cars)`;
+                    jamList.appendChild(jamDiv);
+                });
+            }
+        }
+        
+        // Control functions
+        function toggleSimulation() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('playBtn');
+            const stepBtn = document.getElementById('stepBtn');
+            
+            if (isRunning) {
+                btn.textContent = '⏸ Pause';
+                stepBtn.disabled = true;
+                intervalId = setInterval(simulationStep, speed);
+            } else {
+                btn.textContent = '▶ Play';
+                stepBtn.disabled = false;
+                clearInterval(intervalId);
+            }
+        }
+        
+        function stepSimulation() {
+            if (!isRunning) {
+                simulationStep();
+            }
+        }
+        
+        function resetSimulation() {
+            if (isRunning) {
+                toggleSimulation();
+            }
+            initializeSimulation();
+        }
+        
+        function changeSpeed() {
+            speed = parseInt(document.getElementById('speedSelect').value);
+            if (isRunning) {
+                clearInterval(intervalId);
+                intervalId = setInterval(simulationStep, speed);
+            }
+        }
+        
+        // Initialise when page loads
+        window.onload = function() {
+            initializeSimulation();
+        };
+    </script>
+</body>
+</html>
